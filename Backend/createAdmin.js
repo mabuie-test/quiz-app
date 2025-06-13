@@ -15,8 +15,8 @@ async function createAdmin() {
 
   // 2. Dados do admin a criar
   const name     = 'Admin Principal';
-  const email    = 'admin@dominio.com';
-  const password = 'SenhaSegura123';  // altere para a password que desejar
+  const email    = 'teste@cedteam.com';
+  const password = '123';  // altere para a password que desejar
 
   // 3. Verificar se já existe um utilizador com esse email
   let user = await User.findOne({ email });
