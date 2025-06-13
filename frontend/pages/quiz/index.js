@@ -1,20 +1,40 @@
 // frontend/pages/quiz/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import api from '../../utils/api';
+import { AuthContext } from '../../context/AuthContext';
 
 export default function QuizHome() {
   const router = useRouter();
+  const { user } = useContext(AuthContext);
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
 
   useEffect(() => {
-    // Carrega categorias do back‑end
+    if (!user) return; // só carrega após user estar definido
     api.get('/categories')
-       .then(res => setCategories(res.data))
-       .catch(err => console.error('Erro a carregar categorias:', err));
-  }, []);
+      .then(res => {
+        setCategories(res.data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Não foi possível carregar categorias.');
+        setLoading(false);
+      });
+  }, [user]);
 
-  // Agrupa por parentGroup
+  if (loading) return <p className="text-center mt-10">Carregando categorias…</p>;
+  if (error)   return <p className="text-center mt-10 text-red-600">{error}</p>;
+  if (categories.length === 0) {
+    return (
+      <div className="text-center mt-10">
+        <p>Nenhuma categoria disponível.</p>
+        <p>Crie categorias no painel Admin.</p>
+      </div>
+    );
+  }
+
   const grouped = categories.reduce((acc, cat) => {
     acc[cat.parentGroup] = acc[cat.parentGroup] || [];
     acc[cat.parentGroup].push(cat);
