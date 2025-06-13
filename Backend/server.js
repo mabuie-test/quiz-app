@@ -14,7 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Conexão MongoDB
+// Conectar ao MongoDB
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -26,7 +26,7 @@ mongoose.connect(process.env.MONGO_URI, {
 app.use('/api/auth', authRoutes);
 
 // Rotas protegidas
-app.use('/api/users',   authMw, userRoutes);
+app.use('/api/users',      authMw, userRoutes);
 app.use('/api/categories', authMw, catRoutes);
 app.use('/api/questions',  authMw, qRoutes);
 app.use('/api/quiz',       authMw, quizRoutes);
