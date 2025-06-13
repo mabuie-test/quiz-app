@@ -1,3 +1,4 @@
+// frontend/pages/login.js
 import { useState, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../context/AuthContext';
@@ -14,8 +15,13 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     try {
-      await login(email, password);
-      router.push('/quiz');  // redireciona para /quiz ou para a rota que preferir
+      const user = await login(email, password);
+      // Redireciona consoante o papel
+      if (user.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/quiz');
+      }
     } catch (err) {
       setError(err.response?.data?.msg || 'Credenciais inválidas.');
     }
