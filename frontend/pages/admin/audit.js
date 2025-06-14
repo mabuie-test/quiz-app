@@ -7,25 +7,49 @@ import { useRouter } from 'next/router';
 export default function AdminAudit() {
   const router = useRouter();
   const { user, logout } = useContext(AuthContext);
-  const [logs, setLogs]   = useState([]);
-  const [error, setError] = useState(null);
+
+  const [logs, setLogs]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [status, setStatus]   = useState(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) return;                // aguarda user
     if (user.role !== 'admin') {
       router.replace('/login');
       return;
     }
+
     api.get('/audit')
-      .then(res => setLogs(res.data))
-      .catch(() => setError('Não foi possível carregar logs.'));
+      .then(res => {
+        setLogs(res.data);
+        setStatus(res.status);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Erro ao chamar /audit:', err);
+        setStatus(err.response?.status || '---');
+        setError(err.response?.data?.msg || err.message);
+        setLoading(false);
+      });
   }, [user]);
 
   if (!user || user.role !== 'admin') {
     return <p className="text-center mt-10">Acesso negado.</p>;
   }
+
+  if (loading) {
+    return <p className="text-center mt-10">Carregando logs…</p>;
+  }
+
   if (error) {
-    return <p className="text-red-600 text-center mt-10">{error}</p>;
+    return (
+      <div className="p-6 text-center">
+        <p className="text-red-600 mb-2">Não foi possível carregar logs.</p>
+        <p className="text-sm text-gray-600">HTTP Status: {status}</p>
+        <p className="text-sm text-gray-600">Erro: {error}</p>
+      </div>
+    );
   }
 
   return (
