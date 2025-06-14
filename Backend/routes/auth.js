@@ -1,36 +1,33 @@
-// backend/routes/auth.js
-const router = require('express').Router();
-const bcrypt = require('bcryptjs');
-const jwt    = require('jsonwebtoken');
-const authMw = require('../middlewares/auth');
-const User   = require('../models/User');
+const router   = require('express').Router();
+const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
+const authMw   = require('../middlewares/auth');
+const User     = require('../models/User');
+const { logAudit } = require('../utils/audit');
 
-// Registo (primeiro user = admin; restantes = player)
+// Registo (first-admin logic)
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
-
-  // 1. Impedir emails duplicados
   if (await User.findOne({ email })) {
     return res.status(400).json({ msg: 'Email já registado.' });
   }
-
-  // 2. Gerar hash
   const hashed = await bcrypt.hash(password, 10);
-
-  // 3. Definir role
-  const count = await User.countDocuments();
-  const role  = count === 0 ? 'admin' : 'player';
-
-  // 4. Criar e gravar
-  const user = new User({ name, email, password: hashed, role });
+  const count  = await User.countDocuments();
+  const role   = count === 0 ? 'admin' : 'player';
+  const user   = new User({ name, email, password: hashed, role });
   await user.save();
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
 
-  // 5. Gerar e devolver token + user
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '8h' }
-  );
+  // Auditoria de registo
+  await logAudit({
+    userId:    user._id.toString(),
+    action:    'REGISTER',
+    resource:  'User',
+    resourceId:user._id.toString(),
+    ip:        req.ip,
+    details:   { name, email, role }
+  });
+
   res.json({ token, user: { name: user.name, email: user.email, role: user.role } });
 });
 
@@ -41,12 +38,17 @@ router.post('/login', async (req, res) => {
   if (!user) return res.status(400).json({ msg: 'Credenciais inválidas.' });
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) return res.status(400).json({ msg: 'Credenciais inválidas.' });
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '8h' }
-  );
+  // Auditoria de login
+  await logAudit({
+    userId:    user._id.toString(),
+    action:    'LOGIN',
+    resource:  'User',
+    resourceId:user._id.toString(),
+    ip:        req.ip
+  });
+
   res.json({ token, user: { name: user.name, email: user.email, role: user.role } });
 });
 
