@@ -1,14 +1,32 @@
-const router   = require('express').Router();
-const Question = require('../models/Question');
+const router     = require('express').Router();
+const Question   = require('../models/Question');
+const authMw     = require('../middlewares/auth');
+const { logAudit } = require('../utils/audit');
+
+// Apenas Admin pode gerir Questões
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ msg: 'Acesso negado. Apenas admin.' });
+  }
+  next();
+}
 
 // Criar questão
-router.post('/', async (req, res) => {
+router.post('/', authMw, adminOnly, async (req, res) => {
   const q = new Question(req.body);
-  await q.save();
-  res.json(q);
+  const saved = await q.save();
+  await logAudit({
+    userId:    req.user.id,
+    action:    'CREATE_QUESTION',
+    resource:  'Question',
+    resourceId:saved._id.toString(),
+    ip:        req.user.ip,
+    details:   { text: saved.text, category: saved.category }
+  });
+  res.json(saved);
 });
 
-// Listar questões (opcional filtro)
+// Listar questões
 router.get('/', async (req, res) => {
   const filter = {};
   if (req.query.category) filter.category = req.query.category;
@@ -16,15 +34,30 @@ router.get('/', async (req, res) => {
   res.json(qs);
 });
 
-// Atualizar
-router.put('/:id', async (req, res) => {
+// Atualizar questão
+router.put('/:id', authMw, adminOnly, async (req, res) => {
   await Question.findByIdAndUpdate(req.params.id, req.body);
+  await logAudit({
+    userId:    req.user.id,
+    action:    'UPDATE_QUESTION',
+    resource:  'Question',
+    resourceId:req.params.id,
+    ip:        req.user.ip,
+    details:   req.body
+  });
   res.json({ msg: 'Questão atualizada.' });
 });
 
-// Eliminar
-router.delete('/:id', async (req, res) => {
+// Eliminar questão
+router.delete('/:id', authMw, adminOnly, async (req, res) => {
   await Question.findByIdAndDelete(req.params.id);
+  await logAudit({
+    userId:    req.user.id,
+    action:    'DELETE_QUESTION',
+    resource:  'Question',
+    resourceId:req.params.id,
+    ip:        req.user.ip
+  });
   res.json({ msg: 'Questão removida.' });
 });
 
