@@ -2,26 +2,44 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Timer80s from '../../components/Timer80s';
 import QuestionCard from '../../components/QuestionCard';
-import axios from 'axios';
+import api from '../../utils/api';
 
 export default function QuizPage() {
   const router = useRouter();
   const { category } = router.query;
-  const [questions, setQuestions] = useState([]);
-  const [current, setCurrent] = useState(0);
-  const [timeUpFlag, setTimeUpFlag] = useState(false);
-  const [answered, setAnswered] = useState(false);
 
+  const [questions, setQuestions] = useState([]);
+  const [current, setCurrent]     = useState(0);
+  const [timeUpFlag, setTimeUpFlag] = useState(false);
+  const [answered, setAnswered]   = useState(false);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+
+  // Carregar perguntas
   useEffect(() => {
     if (!category) return;
-    axios.post('/api/quiz/start', { categoryId: category, numQuestions: 10 })
-      .then(res => setQuestions(res.data));
+    setLoading(true);
+    setError(null);
+    api.post('/quiz/start', { categoryId: category, numQuestions: 10 })
+      .then(res => {
+        setQuestions(res.data);
+      })
+      .catch(err => {
+        console.error('Erro ao carregar questões:', err);
+        setError('Não foi possível carregar as questões.');
+      })
+      .finally(() => setLoading(false));
   }, [category]);
 
   const handleAnswer = async (qid, idx) => {
     setAnswered(true);
-    const res = await axios.post('/api/quiz/answer', { questionId: qid, selectedOptionIndex: idx });
-    return res.data;
+    try {
+      const res = await api.post('/quiz/answer', { questionId: qid, selectedOptionIndex: idx });
+      return res.data;
+    } catch (err) {
+      console.error('Erro ao enviar resposta:', err);
+      return { correct: false, explanation: 'Erro ao verificar resposta.' };
+    }
   };
 
   const nextQuestion = () => {
@@ -30,25 +48,43 @@ export default function QuizPage() {
     setCurrent(prev => prev + 1);
   };
 
-  if (!questions.length) return <p>Carregando questões…</p>;
-  if (current >= questions.length) return <p>Quiz concluído!</p>;
+  // Redireciona se não autenticado
+  useEffect(() => {
+    if (loading) return;
+    if (!questions.length && !error) return;
+    // Nada
+  }, [loading, questions, error]);
+
+  if (loading) {
+    return <p className="text-center mt-10">Carregando questões…</p>;
+  }
+  if (error) {
+    return <p className="text-center mt-10 text-red-600">{error}</p>;
+  }
+  if (current >= questions.length) {
+    return <p className="text-center mt-10">Quiz concluído!</p>;
+  }
+
+  const q = questions[current];
 
   return (
-    <div className="max-w-xl mx-auto">
+    <div className="max-w-xl mx-auto px-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl">Pergunta {current + 1}/{questions.length}</h2>
+        <h2 className="text-2xl">
+          Pergunta {current + 1}/{questions.length}
+        </h2>
         <Timer80s onTimeUp={() => setTimeUpFlag(true)} />
       </div>
 
       <QuestionCard
-        question={questions[current]}
+        question={q}
         onAnswer={handleAnswer}
         timeUp={timeUpFlag}
       />
 
       {(timeUpFlag || answered) && (
         <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           onClick={nextQuestion}
         >
           Seguinte
