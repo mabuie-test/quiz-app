@@ -14,6 +14,9 @@ const authMw      = require('./middlewares/auth');
 
 const app = express();
 
+// **Ativar trust proxy** para ler corretamente X-Forwarded-For
+app.set('trust proxy', true);
+
 // Middleware global
 app.use(cors());
 app.use(express.json());
