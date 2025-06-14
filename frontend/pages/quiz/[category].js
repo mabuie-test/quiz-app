@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import Timer80s from '../../components/Timer80s';
 import QuestionCard from '../../components/QuestionCard';
 import api from '../../utils/api';
+import { AuthContext } from '../../context/AuthContext';
 
 export default function QuizPage() {
   const router = useRouter();
   const { category } = router.query;
+  const { user } = useContext(AuthContext);
 
   const [questions, setQuestions] = useState([]);
   const [current, setCurrent]     = useState(0);
@@ -15,21 +17,35 @@ export default function QuizPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
 
-  // Carregar perguntas
+  // Se não estiver autenticado, redireciona
   useEffect(() => {
-    if (!category) return;
+    if (user === null) {
+      router.replace('/login');
+    }
+  }, [user]);
+
+  // Carregar perguntas só quando tivermos user e category
+  useEffect(() => {
+    if (!user || !category) return;
+
     setLoading(true);
     setError(null);
+
     api.post('/quiz/start', { categoryId: category, numQuestions: 10 })
       .then(res => {
         setQuestions(res.data);
       })
       .catch(err => {
-        console.error('Erro ao carregar questões:', err);
-        setError('Não foi possível carregar as questões.');
+        console.error('Erro ao carregar questões:', err.response?.status, err.response?.data);
+        if (err.response?.status === 401) {
+          // token inválido ou expirado
+          router.replace('/login');
+        } else {
+          setError('Não foi possível carregar as questões.');
+        }
       })
       .finally(() => setLoading(false));
-  }, [category]);
+  }, [user, category]);
 
   const handleAnswer = async (qid, idx) => {
     setAnswered(true);
@@ -47,13 +63,6 @@ export default function QuizPage() {
     setAnswered(false);
     setCurrent(prev => prev + 1);
   };
-
-  // Redireciona se não autenticado
-  useEffect(() => {
-    if (loading) return;
-    if (!questions.length && !error) return;
-    // Nada
-  }, [loading, questions, error]);
 
   if (loading) {
     return <p className="text-center mt-10">Carregando questões…</p>;
