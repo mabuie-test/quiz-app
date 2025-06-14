@@ -2,21 +2,26 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = function(req, res, next) {
-  // 1. Extrair token do header Authorization: "Bearer <token>"
+  // Extrair token do header Authorization: "Bearer <token>"
   const token = req.header('Authorization')?.split(' ')[1];
   if (!token) {
     return res.status(401).json({ msg: 'Sem token, acesso negado.' });
   }
 
   try {
-    // 2. Verificar e decodificar
+    // Verificar e decodificar
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // 3. Anexar user e ip ao request
+
+    // Obter o IP real (confia em X-Forwarded-For graças ao trust proxy)
+    const ip = req.ip;
+
+    // Anexar user e ip ao request
     req.user = {
-      id: decoded.id,
+      id:   decoded.id,
       role: decoded.role,
-      ip: req.ip
+      ip    // agora será o IP completo
     };
+
     next();
   } catch (err) {
     return res.status(401).json({ msg: 'Token inválido.' });
