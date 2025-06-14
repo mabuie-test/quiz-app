@@ -2,42 +2,39 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
+const authMw = require('../middlewares/auth');
 const User   = require('../models/User');
 
-// Registo (temporariamente atribui sempre role = 'admin')
+// Registo (primeiro user = admin; restantes = player)
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
 
-  // 1. Verificar se já existe user com este email
+  // 1. Impedir emails duplicados
   if (await User.findOne({ email })) {
     return res.status(400).json({ msg: 'Email já registado.' });
   }
 
-  // 2. Hash da password
+  // 2. Gerar hash
   const hashed = await bcrypt.hash(password, 10);
 
-  // 3. Atribuir sempre role 'admin'
-  const role = 'admin';
+  // 3. Definir role
+  const count = await User.countDocuments();
+  const role  = count === 0 ? 'admin' : 'player';
 
-  // 4. Criar e guardar
+  // 4. Criar e gravar
   const user = new User({ name, email, password: hashed, role });
   await user.save();
 
-  // 5. Gerar token JWT
+  // 5. Gerar e devolver token + user
   const token = jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
-
-  // 6. Devolver token e dados do user (incluindo role)
-  res.json({
-    token,
-    user: { name: user.name, email: user.email, role: user.role }
-  });
+  res.json({ token, user: { name: user.name, email: user.email, role: user.role } });
 });
 
-// Login (mantém‑se igual)
+// Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
@@ -53,8 +50,8 @@ router.post('/login', async (req, res) => {
   res.json({ token, user: { name: user.name, email: user.email, role: user.role } });
 });
 
-// Perfil do user autenticado (mantém‑se igual)
-router.get('/me', require('../middlewares/auth'), (req, res) => {
+// Perfil
+router.get('/me', authMw, (req, res) => {
   res.json(req.user);
 });
 
