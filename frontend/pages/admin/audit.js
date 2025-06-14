@@ -14,7 +14,7 @@ export default function AdminAudit() {
   const [status, setStatus]   = useState(null);
 
   useEffect(() => {
-    if (!user) return;                // aguarda user
+    if (!user) return;
     if (user.role !== 'admin') {
       router.replace('/login');
       return;
@@ -22,12 +22,12 @@ export default function AdminAudit() {
 
     api.get('/audit')
       .then(res => {
-        setLogs(res.data);
+        setLogs(Array.isArray(res.data) ? res.data : []);
         setStatus(res.status);
         setLoading(false);
       })
       .catch(err => {
-        console.error('Erro ao chamar /audit:', err);
+        console.error('Erro ao chamar /api/audit:', err);
         setStatus(err.response?.status || '---');
         setError(err.response?.data?.msg || err.message);
         setLoading(false);
@@ -37,11 +37,9 @@ export default function AdminAudit() {
   if (!user || user.role !== 'admin') {
     return <p className="text-center mt-10">Acesso negado.</p>;
   }
-
   if (loading) {
     return <p className="text-center mt-10">Carregando logs…</p>;
   }
-
   if (error) {
     return (
       <div className="p-6 text-center">
@@ -77,17 +75,23 @@ export default function AdminAudit() {
           </tr>
         </thead>
         <tbody>
-          {logs.map(log => (
-            <tr key={log._id} className="border-t">
-              <td className="p-2 text-sm">{new Date(log.timestamp).toLocaleString()}</td>
-              <td className="p-2 text-sm">{log.user.name} ({log.user.email})</td>
-              <td className="p-2 text-sm">{log.action}</td>
-              <td className="p-2 text-sm">{log.resource}</td>
-              <td className="p-2 text-sm">{log.resourceId}</td>
-              <td className="p-2 text-sm">{log.ip}</td>
-              <td className="p-2 text-sm">{JSON.stringify(log.details)}</td>
-            </tr>
-          ))}
+          {logs.map(log => {
+            // Proteção contra log.user ser string em vez de object
+            const userCell = (typeof log.user === 'object' && log.user !== null)
+              ? `${log.user.name} (${log.user.email})`
+              : String(log.user);
+            return (
+              <tr key={log._id} className="border-t">
+                <td className="p-2 text-sm">{new Date(log.timestamp).toLocaleString()}</td>
+                <td className="p-2 text-sm">{userCell}</td>
+                <td className="p-2 text-sm">{log.action}</td>
+                <td className="p-2 text-sm">{log.resource}</td>
+                <td className="p-2 text-sm">{log.resourceId}</td>
+                <td className="p-2 text-sm">{log.ip}</td>
+                <td className="p-2 text-sm">{JSON.stringify(log.details)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
