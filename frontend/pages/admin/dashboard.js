@@ -48,6 +48,11 @@ export default function AdminDashboard() {
             Gestão de Questões
           </a>
         </Link>
+        <Link href="/admin/audit">
+          <a className="block px-4 py-2 bg-purple-600 text-white rounded">
+            Auditoria
+          </a>
+        </Link>
         <Link href="/quiz">
           <a className="block px-4 py-2 bg-green-600 text-white rounded">
             Jogar Quiz
