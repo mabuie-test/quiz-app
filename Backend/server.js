@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+// server.js (logo após as outras rotas protegidas)
+const auditRoutes = require('./routes/audit');
+app.use('/api/audit', authMw, auditRoutes);
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const catRoutes  = require('./routes/categories');
