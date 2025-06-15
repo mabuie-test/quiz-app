@@ -1,3 +1,4 @@
+// frontend/pages/quiz/[category].js
 import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import Timer80s from '../../components/Timer80s';
@@ -17,14 +18,14 @@ export default function QuizPage() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
 
-  // Se não estiver autenticado, redireciona
+  // 1. Se não estiver autenticado, redireciona
   useEffect(() => {
     if (user === null) {
       router.replace('/login');
     }
   }, [user]);
 
-  // Carregar perguntas só quando tivermos user e category
+  // 2. Carregar perguntas só quando tivermos user/token e category
   useEffect(() => {
     if (!user || !category) return;
 
